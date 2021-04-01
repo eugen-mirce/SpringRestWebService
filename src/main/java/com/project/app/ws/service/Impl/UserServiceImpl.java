@@ -1,5 +1,8 @@
 package com.project.app.ws.service.Impl;
 
+import com.project.app.ws.io.entity.RoleEntity;
+import com.project.app.ws.io.repositories.RoleRepository;
+import com.project.app.ws.security.UserPrincipal;
 import com.project.app.ws.shared.EmailSender;
 import com.project.app.ws.shared.Utils;
 import com.project.app.ws.shared.dto.AddressDTO;
@@ -23,6 +26,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -42,8 +47,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     EmailSender emailSender;
+
+    @Autowired
+    RoleRepository roleRepository;
+
     @Override
-    public UserDto createUser(UserDto user) {
+    public UserDto createUser(UserDto user, boolean skipVerification) {
 
         if(userRepository.findByEmail(user.getEmail()) != null)
             throw new UserServiceException("Record already exists");
@@ -61,15 +70,31 @@ public class UserServiceImpl implements UserService {
         String publicUserId = utils.generateUserId(30);
         userEntity.setUserId(publicUserId);
         userEntity.setEncryptedPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-        userEntity.setEmailVerificationToken(utils.generateEmailVerificationToken(publicUserId));
-        userEntity.setEmailVerificationStatus(false);
+        if (skipVerification) {
+            userEntity.setEmailVerificationToken(null);
+            userEntity.setEmailVerificationStatus(true);
+        } else {
+            userEntity.setEmailVerificationToken(utils.generateEmailVerificationToken(publicUserId));
+            userEntity.setEmailVerificationStatus(false);
+        }
+
+
+        Collection<RoleEntity> roleEntities = new HashSet<>();
+        for(String role: user.getRoles()) {
+            RoleEntity roleEntity = roleRepository.findByName(role);
+            if(roleEntity !=null) { roleEntities.add(roleEntity); }
+        }
+        userEntity.setRoles(roleEntities);
+
         UserEntity storedUserDetails = userRepository.save(userEntity);
 
         UserDto returnValue = modelMapper.map(storedUserDetails,UserDto.class);
-        try{
-            emailSender.verifyEmail(returnValue);
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
+        if(!skipVerification) {
+            try {
+                emailSender.verifyEmail(returnValue);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
         }
         return returnValue;
     }
@@ -219,14 +244,15 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = userRepository.findByEmail(email);
         if(userEntity == null) throw new UsernameNotFoundException(email);
 
-        return new User(
-                userEntity.getEmail(),
-                userEntity.getEncryptedPassword(),
-                userEntity.getEmailVerificationStatus(),
-                true,
-                true,
-                true,
-                new ArrayList<>()
-                );
+//        return new User(
+//                userEntity.getEmail(),
+//                userEntity.getEncryptedPassword(),
+//                userEntity.getEmailVerificationStatus(),
+//                true,
+//                true,
+//                true,
+//                new ArrayList<>()
+//                );
+        return new UserPrincipal(userEntity);
     }
 }

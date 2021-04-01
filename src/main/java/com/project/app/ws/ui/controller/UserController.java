@@ -1,5 +1,6 @@
 package com.project.app.ws.ui.controller;
 
+import com.project.app.ws.shared.Roles;
 import com.project.app.ws.shared.dto.AddressDTO;
 import com.project.app.ws.shared.dto.UserDto;
 import com.project.app.ws.ui.model.request.PasswordResetModel;
@@ -16,10 +17,14 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.Link;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -28,12 +33,15 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RestController
 @RequestMapping("users")        //http://localhost:8080/users
 public class UserController {
+    private boolean skipVerification = true;
+
     @Autowired
     UserService userService;
 
     @Autowired
     AddressService addressService;
 
+    @PostAuthorize("hasRole('ROLE_ADMIN') or returnObject.userId == principal.userId")
     @GetMapping(
             path = "/{userId}",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
@@ -45,6 +53,7 @@ public class UserController {
 
         return modelMapper.map(userDto,UserRest.class);
     }
+
     @PostMapping(
             consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE},
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
@@ -55,8 +64,9 @@ public class UserController {
 
         ModelMapper modelMapper = new ModelMapper();
         UserDto userDto = modelMapper.map(userDetails,UserDto.class);
+        userDto.setRoles(new HashSet<>(Arrays.asList(Roles.ROLE_USER.name())));
 
-        UserDto createdUser = userService.createUser(userDto);
+        UserDto createdUser = userService.createUser(userDto,skipVerification);
 
         return modelMapper.map(createdUser,UserRest.class);
 
@@ -74,6 +84,7 @@ public class UserController {
         UserDto createdUser = userService.updateUser(userId,userDto);
         return modelMapper.map(createdUser, UserRest.class);
     }
+    @PreAuthorize("hasRole('ROLE_ADMIN') or #id == principal.userId")
     @DeleteMapping(
             path = "/{userId}",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
