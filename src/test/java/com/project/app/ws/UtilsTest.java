@@ -32,10 +32,19 @@ public class UtilsTest {
         assertTrue(!userId.equalsIgnoreCase(userId2));
     }
     @Test
-    final void testHasTokenExpired() {
-        //TODO Get Token Not Hardcoded
-        String token = "";
+    final void testHasTokenNotExpired() {
+        String token = utils.generateEmailVerificationToken("gdfgasd335");
+        assertNotNull(token);
+
         boolean hasTokenExpired = Utils.hasTokenExpired(token);
         assertFalse(hasTokenExpired);
+    }
+    @Test
+    @Disabled //TODO Remove after a few days to check if token is expired
+    final void testHasTokenExpired() {
+        String expiredToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzZXVnZW4uZWw5MkBob3RtYWlsLmNvbSIsImV4cCI6MTYxNzYyNDkzMH0.hWxuk5RwSRJV8xS2lCc3fFvH-AxtveZsxIqBurXqaWwIEXSStfjS5QOGU-RCDg9FZRtGVkw26eqYKtndXjDgAA";
+        boolean hasTokenExpired = Utils.hasTokenExpired(expiredToken);
+
+        assertTrue(hasTokenExpired);
     }
 }

@@ -100,7 +100,7 @@ public class UserServiceImplTest {
 
         assertThrows(UserServiceException.class,
                 () -> {
-                    userService.createUser(userDto);
+                    userService.createUser(userDto,true);
                 });
     }
 
@@ -122,7 +122,7 @@ public class UserServiceImplTest {
         userDto.setPassword("12345678");
         userDto.setAddresses(getAddresses());
 
-        UserDto storedUserDetails = userService.createUser(userDto);
+        UserDto storedUserDetails = userService.createUser(userDto,true);
 
         assertNotNull(storedUserDetails);
         assertEquals(userEntity.getFirstName(),storedUserDetails.getFirstName());
